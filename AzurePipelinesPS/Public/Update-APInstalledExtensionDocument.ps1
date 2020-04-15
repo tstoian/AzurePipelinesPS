@@ -1,14 +1,15 @@
-function Get-APInstalledExtensionDocumentList
+function Update-APInstalledExtensionDocument
 {
     <#
     .SYNOPSIS
 
-    Returns a list of Azure Pipeline installed extension documents.
+    Updates an Azure Pipeline installed extension document.
 
     .DESCRIPTION
 
-    Returns a list of Azure Pipeline installed extension documents.
+    Updates an Azure Pipeline installed extension document, that is stored as json.
     The extension details can be retrieved by using Get-APInstalledExtensionList.
+    The document id can be retrieced by using Get-APInstalledExtensionDocumentList.
 
     .PARAMETER Instance
     
@@ -65,6 +66,10 @@ function Get-APInstalledExtensionDocumentList
 
     The name of the document collection.
 
+    .PARAMETER InputObject
+
+    The document object to be added. Converted and stored as json.
+
     .INPUTS
     
     None, does not support pipeline.
@@ -75,16 +80,18 @@ function Get-APInstalledExtensionDocumentList
 
     .EXAMPLE
 
-    Returns the WindowsServiceManager extension document list.
+    Updates the WindowsServiceManager extension document with a new name.
 
-    Get-APInstalledExtensionDocumentList -Instance 'https://dev.azure.com' -Collection 'myCollection' -ExtensionName 'WindowsServiceManager' -Published 'MDSolutions' -ScopeType 'Default' -ScopeValue 'Current'
+    $document = Get-APInstalledExtensionDocument -Instance 'https://dev.azure.com' -Collection 'myCollection' -ExtensionName 'WindowsServiceManager' -Published 'MDSolutions' -ScopeType 'Default' -ScopeValue 'Current' -DocumentId 'theDocumentGuid'
+    $document.Name = 'newName'
+    Update-APInstalledExtensionDocument -Instance 'https://dev.azure.com' -Collection 'myCollection' -ExtensionName 'WindowsServiceManager' -Published 'MDSolutions' -ScopeType 'Default' -ScopeValue 'Current' -InputObject $document
 
     .LINK
 
     Windows Service Manager extension:
     https://marketplace.visualstudio.com/items?itemName=MDSolutions.WindowsServiceManagerWindowsServiceManager
 
-    https://docs.microsoft.com/en-us/rest/api/azure/devops/extensionmanagement/installed%20extensions/get?view=azure-devops-rest-5.0
+    https://docs.microsoft.com/en-us/rest/api/azure/devops/extensionmanagement/installed%20extensions?view=azure-devops-rest-5.0
     #>
     [CmdletBinding(DefaultParameterSetName = 'ByPersonalAccessToken')]
     Param
@@ -153,7 +160,11 @@ function Get-APInstalledExtensionDocumentList
 
         [Parameter(Mandatory)]
         [string]
-        $DocumentCollection
+        $DocumentCollection, 
+
+        [Parameter(Mandatory)]
+        [object]
+        $InputObject
     )
 
     begin
@@ -183,6 +194,7 @@ function Get-APInstalledExtensionDocumentList
     
     process
     {
+        $body = $InputObject
         $apiEndpoint = (Get-APApiEndpoint -ApiType 'extensionmanagement-collection') -f $PublisherName, $ExtensionName, $ScopeType, $ScopeValue, $DocumentCollection
         $queryParameters = Set-APQueryParameters -InputObject $PSBoundParameters
         $setAPUriSplat = @{
@@ -194,12 +206,14 @@ function Get-APInstalledExtensionDocumentList
         }
         [uri] $uri = Set-APUri @setAPUriSplat
         $invokeAPRestMethodSplat = @{
-            Method              = 'GET'
+            Method              = 'PATCH'
             Uri                 = $uri
             Credential          = $Credential
             PersonalAccessToken = $PersonalAccessToken
             Proxy               = $Proxy
             ProxyCredential     = $ProxyCredential
+            Body                = $body
+            ContentType         = 'application/json'
         }
         $results = Invoke-APRestMethod @invokeAPRestMethodSplat 
         If ($results.value)

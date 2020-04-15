@@ -1,14 +1,13 @@
-function Get-APInstalledExtensionDocumentList
+function Get-APDescriptor
 {
     <#
     .SYNOPSIS
 
-    Returns a list of Azure Pipeline installed extension documents.
+    Resolve a storage key to a descriptor.
 
     .DESCRIPTION
 
-    Returns a list of Azure Pipeline installed extension documents.
-    The extension details can be retrieved by using Get-APInstalledExtensionList.
+    Resolve a storage key to a descriptor.
 
     .PARAMETER Instance
     
@@ -45,46 +44,27 @@ function Get-APInstalledExtensionDocumentList
 
     Azure DevOps PS session, created by New-APSession.
 
-    .PARAMETER PublisherName
+    .PARAMETER StorageKey
 
-    Name of the publisher. Example: "MDSolutions".
-
-    .PARAMETER ExtensionName
-	
-    Name of the extension. Example: "WindowsServiceManager".
-
-    .PARAMETER ScopeType
-	
-    The scope of where the document is stored. Can be Default or User.
-
-    .PARAMETER ScopeValue
-
-    The value of the scope where the document is stored. Can be Current or Me.
-
-    .PARAMETER DocumentCollection
-
-    The name of the document collection.
+    Storage key of the subject (user, group, scope, etc.) to resolve.
 
     .INPUTS
     
-    None, does not support pipeline.
+    None, does not support the pipeline.
 
     .OUTPUTS
 
-    PSObject, Azure Pipelines extension document(s).
+    PSObject, Azure Pipelines account(s)
 
     .EXAMPLE
 
-    Returns the WindowsServiceManager extension document list.
+    Returns a subject descriptor of a Graph entity.
 
-    Get-APInstalledExtensionDocumentList -Instance 'https://dev.azure.com' -Collection 'myCollection' -ExtensionName 'WindowsServiceManager' -Published 'MDSolutions' -ScopeType 'Default' -ScopeValue 'Current'
+    Get-APDescriptor -Instance 'https://dev.azure.com' -Collection 'myCollection' -ApiVersion 5.0-preview -StorageKey '16c8b591-362d-4d7f-b77b-b04c2f110c52'
 
     .LINK
 
-    Windows Service Manager extension:
-    https://marketplace.visualstudio.com/items?itemName=MDSolutions.WindowsServiceManagerWindowsServiceManager
-
-    https://docs.microsoft.com/en-us/rest/api/azure/devops/extensionmanagement/installed%20extensions/get?view=azure-devops-rest-5.0
+    https://docs.microsoft.com/en-us/rest/api/azure/devops/graph/descriptors/get?view=azure-devops-rest-5.0
     #>
     [CmdletBinding(DefaultParameterSetName = 'ByPersonalAccessToken')]
     Param
@@ -135,25 +115,7 @@ function Get-APInstalledExtensionDocumentList
 
         [Parameter(Mandatory)]
         [string]
-        $PublisherName,
-
-        [Parameter(Mandatory)]
-        [string]
-        $ExtensionName,
-
-        [Parameter(Mandatory)]
-        [ValidateSet('Default', 'User')]
-        [string]
-        $ScopeType,
-
-        [Parameter(Mandatory)]
-        [ValidateSet('Current', 'Me')]
-        [string]
-        $ScopeValue,
-
-        [Parameter(Mandatory)]
-        [string]
-        $DocumentCollection
+        $StorageKey
     )
 
     begin
@@ -183,7 +145,11 @@ function Get-APInstalledExtensionDocumentList
     
     process
     {
-        $apiEndpoint = (Get-APApiEndpoint -ApiType 'extensionmanagement-collection') -f $PublisherName, $ExtensionName, $ScopeType, $ScopeValue, $DocumentCollection
+        If ($ApiVersion -notmatch '5.*')
+        {
+            Write-Error "[$($MyInvocation.MyCommand.Name)]: Groups are not supported in api versions earlier the 5.0." -ErrorAction 'Stop'
+        }
+        $apiEndpoint = (Get-APApiEndpoint -ApiType 'graph-descriptorStorageKey') -f $StorageKey
         $queryParameters = Set-APQueryParameters -InputObject $PSBoundParameters
         $setAPUriSplat = @{
             Collection  = $Collection

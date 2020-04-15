@@ -239,6 +239,11 @@ function Get-APApiEndpoint
             {
                 Return '_apis/graph/groups'
             }
+            'graph-descriptorStorageKey'
+            {
+                Return '_apis/graph/descriptors/{0}'
+            }
+
             'graph-storagekeys'
             {
                 Return '_apis/graph/storagekeys/{0}'
@@ -342,6 +347,10 @@ function Get-APApiEndpoint
             'accesscontrollists-securityNamespaceId'
             {
                 Return '_apis/accesscontrollists/{0}'
+            }
+            'accesscontrolentries-securityNamespaceId'
+            {
+                Return '_apis/accesscontrolentries/{0}'
             }
             'serviceendpoint-endpoints'
             {

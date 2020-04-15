@@ -1,14 +1,13 @@
-function Get-APInstalledExtensionDocumentList
+function Set-APAccessControlEntries
 {
     <#
     .SYNOPSIS
 
-    Returns a list of Azure Pipeline installed extension documents.
+    Add or update ACEs in the ACL for the provided token.
 
     .DESCRIPTION
 
-    Returns a list of Azure Pipeline installed extension documents.
-    The extension details can be retrieved by using Get-APInstalledExtensionList.
+    Add or update ACEs in the ACL for the provided token. Target token contained in the passed ACEs.
 
     .PARAMETER Instance
     
@@ -44,26 +43,22 @@ function Get-APInstalledExtensionDocumentList
     .PARAMETER Session
 
     Azure DevOps PS session, created by New-APSession.
+    
+    .PARAMETER SecurityNamespaceId
 
-    .PARAMETER PublisherName
+    Security namespace identifier.
 
-    Name of the publisher. Example: "MDSolutions".
+    .PARAMETER Token
 
-    .PARAMETER ExtensionName
-	
-    Name of the extension. Example: "WindowsServiceManager".
+    Security token.
 
-    .PARAMETER ScopeType
-	
-    The scope of where the document is stored. Can be Default or User.
+    .PARAMETER Merge
 
-    .PARAMETER ScopeValue
+    Whether to combine or to replace existing ACE.
+    
+    .PARAMETER AccessControlEntries
 
-    The value of the scope where the document is stored. Can be Current or Me.
-
-    .PARAMETER DocumentCollection
-
-    The name of the document collection.
+    An array of ACEs.
 
     .INPUTS
     
@@ -71,20 +66,17 @@ function Get-APInstalledExtensionDocumentList
 
     .OUTPUTS
 
-    PSObject, Azure Pipelines extension document(s).
+    PSObject, Azure Pipelines security namespace ACE(s)
 
     .EXAMPLE
 
-    Returns the WindowsServiceManager extension document list.
+    Returns all access control lists
 
-    Get-APInstalledExtensionDocumentList -Instance 'https://dev.azure.com' -Collection 'myCollection' -ExtensionName 'WindowsServiceManager' -Published 'MDSolutions' -ScopeType 'Default' -ScopeValue 'Current'
+    Set-APAccessControlEntries -Session 'mySession'
 
     .LINK
 
-    Windows Service Manager extension:
-    https://marketplace.visualstudio.com/items?itemName=MDSolutions.WindowsServiceManagerWindowsServiceManager
-
-    https://docs.microsoft.com/en-us/rest/api/azure/devops/extensionmanagement/installed%20extensions/get?view=azure-devops-rest-5.0
+    https://docs.microsoft.com/en-us/rest/api/azure/devops/security/access%20control%20entries/set%20access%20control%20entries?view=azure-devops-rest-5.0
     #>
     [CmdletBinding(DefaultParameterSetName = 'ByPersonalAccessToken')]
     Param
@@ -135,25 +127,19 @@ function Get-APInstalledExtensionDocumentList
 
         [Parameter(Mandatory)]
         [string]
-        $PublisherName,
+        $SecurityNamespaceId,
+
+        [Parameter()]
+        [string]
+        $Token,
+
+        [Parameter()]
+        [bool]
+        $Merge,
 
         [Parameter(Mandatory)]
-        [string]
-        $ExtensionName,
-
-        [Parameter(Mandatory)]
-        [ValidateSet('Default', 'User')]
-        [string]
-        $ScopeType,
-
-        [Parameter(Mandatory)]
-        [ValidateSet('Current', 'Me')]
-        [string]
-        $ScopeValue,
-
-        [Parameter(Mandatory)]
-        [string]
-        $DocumentCollection
+        [PSCustomObject[]]
+        $AccessControlEntries
     )
 
     begin
@@ -183,18 +169,19 @@ function Get-APInstalledExtensionDocumentList
     
     process
     {
-        $apiEndpoint = (Get-APApiEndpoint -ApiType 'extensionmanagement-collection') -f $PublisherName, $ExtensionName, $ScopeType, $ScopeValue, $DocumentCollection
-        $queryParameters = Set-APQueryParameters -InputObject $PSBoundParameters
+        $body = @{ token = $Token; merge = $Merge; accessControlEntries = $AccessControlEntries }
+        $apiEndpoint = (Get-APApiEndpoint -ApiType 'accesscontrolentries-securityNamespaceId') -f $SecurityNamespaceId
         $setAPUriSplat = @{
             Collection  = $Collection
             Instance    = $Instance
             ApiVersion  = $ApiVersion
             ApiEndpoint = $apiEndpoint
-            Query       = $queryParameters
         }
         [uri] $uri = Set-APUri @setAPUriSplat
         $invokeAPRestMethodSplat = @{
-            Method              = 'GET'
+            ContentType         = 'application/json'
+            Body                = $body
+            Method              = 'POST'
             Uri                 = $uri
             Credential          = $Credential
             PersonalAccessToken = $PersonalAccessToken
